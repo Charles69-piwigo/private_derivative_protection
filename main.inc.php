@@ -3,13 +3,22 @@
 Plugin Name: Private Derivative Protection
 Version: 1.0
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
-Author: Charles
+Author: Charles69
 */
+
+// ================================================
+/*
+version 1.0 - 22/06/2026
+
+
+*/
+//=================================================
 
 if (!defined('PHPWG_ROOT_PATH')) die('Hacking attempt!');
 
 
 // Debug — décommenter pour activer les logs =============================
+/*
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -19,6 +28,7 @@ if (file_exists($_pdp_log) && filesize($_pdp_log) > 256 * 1024) {
 }
 ini_set('error_log', $_pdp_log);
 unset($_pdp_log);
+*/
 // =========================================================================
 
 global $conf;
@@ -30,7 +40,7 @@ if (empty($conf['question_mark_in_urls']))
 }
 
 
-define('PDP_TOKEN_TTL', 6*3600);
+define('PDP_TOKEN_TTL', 3*3600); // durée du token
 
 function plugin_activate() {}
 function plugin_deactivate() {}
@@ -48,14 +58,27 @@ function pdp_get_derivative_url($url, $params, $src_image, $rel_url)
   }
 
   global $conf;
+
+  $tokens = array();
+  $tokens[] = substr($params->type, 0, 2);
+  if ($params->type == IMG_CUSTOM)
+  {
+    $params->add_url_tokens($tokens);
+  }
+  $size_token = implode('_', $tokens);
+
+  $loc = $src_image->rel_path;
+  if (substr($loc, 0, 2) === './')  $loc = substr($loc, 2);
+  elseif (substr($loc, 0, 3) === '../') $loc = substr($loc, 3);
+  $dot_pos = strrpos($loc, '.');
+  $deriv_loc = substr_replace($loc, '-'.$size_token, $dot_pos, 0);
+
   $exp = time() + PDP_TOKEN_TTL;
-  $size_token = substr($params->type, 0, 2);
-  $payload = $src_image->id.'-'.$size_token.'-'.$exp;
+  $payload = $deriv_loc.'-'.$exp;
   $sig = hash_hmac('sha256', $payload, $conf['secret_key']);
 
   return get_root_url().'plugins/private_derivative_protection/protect.php'
-    .'?id='.$src_image->id
-    .'&s='.$size_token
+    .'?p='.rawurlencode($deriv_loc)
     .'&e='.$exp
     .'&t='.$sig;
 }
