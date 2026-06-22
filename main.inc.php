@@ -9,6 +9,8 @@ Author: Charles69
 // ================================================
 /*
 version 1.0 - 22/06/2026
+    traite les originaux et les dérivés
+    la ré-écriture des urls doit être désactivée
 
 
 */
@@ -18,7 +20,7 @@ if (!defined('PHPWG_ROOT_PATH')) die('Hacking attempt!');
 
 
 // Debug — décommenter pour activer les logs =============================
-/*
+
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -28,23 +30,14 @@ if (file_exists($_pdp_log) && filesize($_pdp_log) > 256 * 1024) {
 }
 ini_set('error_log', $_pdp_log);
 unset($_pdp_log);
-*/
+
 // =========================================================================
 
-global $conf;
 
-if (empty($conf['question_mark_in_urls']))
-{
-  error_log('[private_derivative_protection] Plugin désactivé...');
-  return;
-}
 
 
 define('PDP_TOKEN_TTL', 3*3600); // durée du token
 
-function plugin_activate() {}
-function plugin_deactivate() {}
-function plugin_uninstall() {}
 
 
 
@@ -111,4 +104,23 @@ SELECT status
   }
   return $cache[$image_id] = $is_private;
 }
+
+
+// ── Protection des originaux via hook get_original_url ────────────────────
+//
+// Toutes les URLs d'originaux sont routées vers serve_original.php,
+// qui sert librement les images publiques et vérifie les droits pour les privées.
+// Requis car galleries/.htaccess bloque tout accès HTTP direct (Require all denied).
+
+add_event_handler('get_original_url', 'pdp_get_original_url', EVENT_HANDLER_PRIORITY_NEUTRAL, null, 2);
+
+function pdp_get_original_url($url, $src_image)
+{
+  // On réécrit TOUTES les URLs — publiques et privées.
+  // serve_original.php gère la distinction.
+  return get_root_url()
+    . 'plugins/private_derivative_protection/serve_original.php'
+    . '?id=' . $src_image->id;
+}
+
 ?>
