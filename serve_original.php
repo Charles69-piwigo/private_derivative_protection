@@ -6,10 +6,10 @@
 // Images privées   : vérification session + forbidden_categories.
 // PHP lit le fichier filesystem directement — bypasse Require all denied.
 
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/pdp_debug.log');
+//error_reporting(E_ALL);
+//ini_set('display_errors', 0);
+//ini_set('log_errors', 1);
+//ini_set('error_log', __DIR__ . '/pdp_debug.log');
 
 chdir(realpath(__DIR__ . '/../..'));
 define('PHPWG_ROOT_PATH', './');

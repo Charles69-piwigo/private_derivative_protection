@@ -4,6 +4,7 @@ Plugin Name: Private Derivative Protection
 Version: 1.0
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
+Has Settings: webmaster
 */
 
 // ================================================
@@ -18,9 +19,15 @@ version 1.0 - 22/06/2026
 
 if (!defined('PHPWG_ROOT_PATH')) die('Hacking attempt!');
 
+define('PDP_PATH',  PHPWG_PLUGINS_PATH . 'private_derivative_protection/');
+define('PDP_ADMIN', get_root_url() . 'admin.php?page=plugin-private_derivative_protection');
+
+// Charger d'abord l'anglais comme base, puis écraser avec la langue de l'utilisateur
+load_language('plugin.lang', PDP_PATH, array('language' => 'en_UK', 'no_fallback' => true));
+load_language('plugin.lang', PDP_PATH);
 
 // Debug — décommenter pour activer les logs =============================
-
+/*
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -30,13 +37,25 @@ if (file_exists($_pdp_log) && filesize($_pdp_log) > 256 * 1024) {
 }
 ini_set('error_log', $_pdp_log);
 unset($_pdp_log);
-
+*/
 // =========================================================================
 
 
 
 
 define('PDP_TOKEN_TTL', 3*3600); // durée du token
+
+add_event_handler('loc_begin_page_header', 'pdp_nginx_warning');
+function pdp_nginx_warning()
+{
+    global $page;
+    if (!defined('IN_ADMIN') || !IN_ADMIN) return;
+    $server_is_nginx = stripos($_SERVER['SERVER_SOFTWARE'] ?? '', 'nginx') !== false
+                    && stripos($_SERVER['SERVER_SOFTWARE'] ?? '', 'apache') === false;
+    //$server_is_nginx = true; // ← TEST TEMPORAIRE, à retirer après vérification
+    if (!$server_is_nginx) return;
+    $page['warnings'][] = l10n('pdp_nginx_global_warning');
+}
 
 
 
