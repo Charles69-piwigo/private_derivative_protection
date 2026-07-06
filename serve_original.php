@@ -35,7 +35,7 @@ if ($image_id <= 0)
 
 global $prefixeTable;
 
-$query = 'SELECT id, path FROM ' . $prefixeTable . 'images WHERE id = ' . $image_id . ' LIMIT 1;';
+$query = 'SELECT id, path, level FROM ' . $prefixeTable . 'images WHERE id = ' . $image_id . ' LIMIT 1;';
 $row   = pwg_db_fetch_assoc(pwg_query($query));
 error_log('PDP_ORIG image : ' . json_encode($row));
 
@@ -71,6 +71,16 @@ if (!is_file($file_path))
 }
 
 // ── Vérification des droits ───────────────────────────────────────────────
+
+$image_level = (int) $row['level'];
+error_log('PDP_ORIG level image=' . $image_level . ' user=' . (int) $user['level']);
+
+if ($image_level > (int) $user['level'])
+{
+  error_log('PDP_ORIG DENY 403 niveau insuffisant');
+  header('HTTP/1.1 403 Forbidden');
+  exit('Forbidden');
+}
 
 $query  = 'SELECT category_id FROM ' . $prefixeTable . 'image_category WHERE image_id = ' . $image_id . ';';
 $result = pwg_query($query);

@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.0
+Version: 1.1
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,6 +9,9 @@ Has Settings: webmaster
 
 // ================================================
 /*
+version 1.1 - 06/07/2026
+    modifications suite retour team piwigo
+
 version 1.0 - 22/06/2026
     traite les originaux et les dérivés
     la ré-écriture des urls doit être désactivée
@@ -60,6 +63,21 @@ function pdp_nginx_warning()
 
 
 
+// Niveau de confidentialité de l'invité — récupéré dynamiquement (jamais codé en dur),
+// car un webmaster peut relever le niveau par défaut du guest_id.
+function pdp_get_guest_level()
+{
+  global $conf;
+  static $level = null;
+  if ($level === null)
+  {
+    $query = 'SELECT level FROM '.USER_INFOS_TABLE.' WHERE user_id = '.(int)$conf['guest_id'].';';
+    $row = pwg_db_fetch_assoc(pwg_query($query));
+    $level = isset($row['level']) ? (int)$row['level'] : 0;
+  }
+  return $level;
+}
+
 add_event_handler('get_derivative_url', 'pdp_get_derivative_url', EVENT_HANDLER_PRIORITY_NEUTRAL, null, 4);
 
 function pdp_get_derivative_url($url, $params, $src_image, $rel_url)
@@ -105,6 +123,17 @@ function pdp_image_is_private($image_id)
     return $cache[$image_id];
   }
 
+  // Niveau de confidentialité de l'image : à protéger même dans un album public
+  // si un invité n'a pas le niveau requis pour la voir.
+  $query = 'SELECT level FROM '.$prefixeTable.'images WHERE id = '.(int)$image_id.';';
+  $row = pwg_db_fetch_assoc(pwg_query($query));
+  $image_level = isset($row['level']) ? (int)$row['level'] : 0;
+
+  if ($image_level > pdp_get_guest_level())
+  {
+    return $cache[$image_id] = true;
+  }
+
   $query = '
 SELECT status
   FROM '.$prefixeTable.'categories c
@@ -125,18 +154,45 @@ SELECT status
 }
 
 
-// ── Protection des originaux via hook get_original_url ────────────────────
+// ── Protection des originaux via hook get_src_image_url ───────────────────
 //
-// Toutes les URLs d'originaux sont routées vers serve_original.php,
-// qui sert librement les images publiques et vérifie les droits pour les privées.
-// Requis car galleries/.htaccess bloque tout accès HTTP direct (Require all denied).
+// C'est le point d'accroche utilisé par picture.php (SrcImage::get_url()),
+// déjà intercepté par le core lui-même (get_src_image_url_protection_handler,
+// common.inc.php) dès que original_url_protection est actif : il redirige
+// vers action.php, qui ne vérifie pas images.level (voir pdp_image_is_private).
+// On s'accroche avec une priorité > NEUTRAL pour s'exécuter APRÈS ce handler
+// du core et pouvoir remplacer son URL par serve_original.php quand la
+// protection (album privé ou niveau) l'exige ; sinon on laisse passer l'URL
+// action.php.
+
+add_event_handler('get_src_image_url', 'pdp_get_src_image_url', EVENT_HANDLER_PRIORITY_NEUTRAL + 10, null, 2);
+
+function pdp_get_src_image_url($url, $src_image)
+{
+  if (!pdp_image_is_private($src_image->id))
+  {
+    return $url;
+  }
+
+  return get_root_url()
+    . 'plugins/private_derivative_protection/serve_original.php'
+    . '?id=' . $src_image->id;
+}
+
+// ── Protection des originaux via hook get_original_url (super_zoom) ───────
+//
+// 'get_original_url' n'est PAS un événement du core Piwigo : c'est un contrat
+// privé déclenché par le plugin super_zoom lui-même (main.inc.php:195,
+// "trigger_change permet à d'autres plugins d'intercepter l'URL"), avec en
+// entrée une URL brute pointant directement sous galleries/ — bloquée par le
+// .htaccess Require all denied. On réécrit donc TOUJOURS vers
+// serve_original.php (publique et privée), qui gère elle-même la vérification
+// des droits (catégories + niveau) et sert le fichier en direct.
 
 add_event_handler('get_original_url', 'pdp_get_original_url', EVENT_HANDLER_PRIORITY_NEUTRAL, null, 2);
 
 function pdp_get_original_url($url, $src_image)
 {
-  // On réécrit TOUTES les URLs — publiques et privées.
-  // serve_original.php gère la distinction.
   return get_root_url()
     . 'plugins/private_derivative_protection/serve_original.php'
     . '?id=' . $src_image->id;
