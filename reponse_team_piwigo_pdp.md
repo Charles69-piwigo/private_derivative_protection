@@ -1,8 +1,7 @@
-# pdp — réponse aux remarques de relecture
+# private derivative protection — réponse aux remarques de relecture du 05/07/2026
 
 Merci pour la relecture. Cette note reprend les remarques dans l'ordre où elles ont été posées et explique comment chacune est traitée dans la dernière version du plugin `private_derivative_protection` (pdp).
 
-Le passage sous gestionnaire de code (remarque liminaire) est traité à part : le code est déjà versionné sous Git et sera connecté à un hébergement public (GitHub ou équivalent) pour la publication.
 
 Environnement de validation : instance `photodev2`, Synology DSM 7, Apache 2.4 (sans mod_rewrite), PHP-FPM.
 
@@ -65,7 +64,7 @@ C'est cette limitation qui empêche pour l'instant un test complet en environnem
 
 ---
 
-## Tests de validation (`photodev2`)
+## Tests de validation 
 
 | Scénario | Résultat |
 |---|---|
