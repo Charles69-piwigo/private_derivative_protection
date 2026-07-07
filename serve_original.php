@@ -135,6 +135,13 @@ $mime_map = array(
   'webp' => 'image/webp',
   'tif'  => 'image/tiff',
   'tiff' => 'image/tiff',
+  'mp4'  => 'video/mp4',
+  'm4v'  => 'video/mp4',
+  'webm' => 'video/webm',
+  'ogv'  => 'video/ogg',
+  'mov'  => 'video/quicktime',
+  'avi'  => 'video/x-msvideo',
+  'mkv'  => 'video/x-matroska',
 );
 $mime  = isset($mime_map[$ext]) ? $mime_map[$ext] : 'application/octet-stream';
 $mtime = filemtime($file_path);
@@ -150,12 +157,67 @@ if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])
 error_log('PDP_ORIG OK ' . basename($file_path) . ' (' . $fsize . ' o)');
 
 header('Content-Type: ' . $mime);
-header('Content-Length: ' . $fsize);
+header('Accept-Ranges: bytes');
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
 header('Cache-Control: private, max-age=3600');
-header('Connection: close');
+
+// ── Support des requêtes Range (nécessaire pour le seek vidéo, VideoJS etc.) ──
+
+$start = 0;
+$end   = $fsize - 1;
+$is_range = false;
+
+if (isset($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d*)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches))
+{
+  $is_range = true;
+  if ($matches[1] !== '')
+  {
+    $start = (int) $matches[1];
+    $end   = ($matches[2] !== '') ? (int) $matches[2] : $fsize - 1;
+  }
+  elseif ($matches[2] !== '')
+  {
+    // suffix range : les N derniers octets
+    $start = max(0, $fsize - (int) $matches[2]);
+    $end   = $fsize - 1;
+  }
+
+  if ($start > $end || $end >= $fsize)
+  {
+    header('HTTP/1.1 416 Range Not Satisfiable');
+    header('Content-Range: bytes */' . $fsize);
+    exit;
+  }
+}
+
+$length = $end - $start + 1;
+
+if ($is_range)
+{
+  header('HTTP/1.1 206 Partial Content');
+  header('Content-Range: bytes ' . $start . '-' . $end . '/' . $fsize);
+}
+else
+{
+  header('HTTP/1.1 200 OK');
+}
+header('Content-Length: ' . $length);
+
+if ($_SERVER['REQUEST_METHOD'] === 'HEAD')
+{
+  exit;
+}
 
 $fp = fopen($file_path, 'rb');
-fpassthru($fp);
+fseek($fp, $start);
+$remaining = $length;
+$chunk = 8192;
+while ($remaining > 0 && !feof($fp))
+{
+  $read = ($remaining > $chunk) ? $chunk : $remaining;
+  echo fread($fp, $read);
+  $remaining -= $read;
+  flush();
+}
 fclose($fp);
 exit;

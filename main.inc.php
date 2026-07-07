@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.1
+Version: 1.2
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,6 +9,10 @@ Has Settings: webmaster
 
 // ================================================
 /*
+version 1.2 - 07/07/2026
+    corrigé pb avec le slider dans VideoJS
+
+
 version 1.1 - 06/07/2026
     modifications suite retour team piwigo
 
@@ -196,6 +200,113 @@ function pdp_get_original_url($url, $src_image)
   return get_root_url()
     . 'plugins/private_derivative_protection/serve_original.php'
     . '?id=' . $src_image->id;
+}
+
+// ── Support des requêtes Range pour action.php (lecture vidéo) ────────────
+//
+// pdp force original_url_protection='all' à l'activation (voir maintain.inc.php).
+// Or piwigo-videojs (plugins/piwigo-videojs/main.inc.php) n'utilise l'URL
+// directe (servie par Apache, qui gère nativement les Range) QUE si
+// original_url_protection est vide ; sinon il bascule sur download_url =
+// action.php, qui sert le fichier avec un simple readfile() sans jamais
+// gérer HTTP_RANGE/206. Résultat : le curseur de progression de VideoJS
+// devient inopérant pour TOUTES les vidéos (publiques ou privées) dès que
+// pdp est actif, indépendamment de toute protection par niveau/catégorie.
+// On ne peut pas modifier action.php (fichier core, écrasé aux mises à
+// jour) : on s'accroche donc à 'loc_action_before_http_headers', déclenché
+// juste avant l'envoi des en-têtes par action.php, pour prendre la main sur
+// les requêtes Range concernant des fichiers vidéo et répondre nous-mêmes
+// en 206 Partial Content ; on laisse action.php gérer le reste (droits déjà
+// vérifiés par action.php lui-même, requêtes sans Range, autres types de
+// fichiers).
+
+add_event_handler('loc_action_before_http_headers', 'pdp_action_range_support');
+
+function pdp_action_range_support()
+{
+  global $file;
+
+  if (empty($file) || !is_readable($file))
+  {
+    return;
+  }
+
+  $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+  $video_mime_map = array(
+    'mp4'  => 'video/mp4',
+    'm4v'  => 'video/mp4',
+    'webm' => 'video/webm',
+    'ogv'  => 'video/ogg',
+    'ogg'  => 'video/ogg',
+    'mov'  => 'video/quicktime',
+    'avi'  => 'video/x-msvideo',
+    'mkv'  => 'video/x-matroska',
+  );
+
+  if (!isset($video_mime_map[$ext]))
+  {
+    return;
+  }
+
+  header('Accept-Ranges: bytes');
+
+  if (!isset($_SERVER['HTTP_RANGE']))
+  {
+    // pas de Range demandé : on laisse action.php servir le fichier complet normalement
+    return;
+  }
+
+  $fsize = filesize($file);
+
+  if (!preg_match('/bytes=(\d*)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches) || ($matches[1] === '' && $matches[2] === ''))
+  {
+    return;
+  }
+
+  if ($matches[1] !== '')
+  {
+    $start = (int) $matches[1];
+    $end   = ($matches[2] !== '') ? (int) $matches[2] : $fsize - 1;
+  }
+  else
+  {
+    // suffix range : les N derniers octets
+    $start = max(0, $fsize - (int) $matches[2]);
+    $end   = $fsize - 1;
+  }
+
+  if ($start > $end || $end >= $fsize)
+  {
+    header('HTTP/1.1 416 Range Not Satisfiable');
+    header('Content-Range: bytes */' . $fsize);
+    exit;
+  }
+
+  $length = $end - $start + 1;
+
+  header('HTTP/1.1 206 Partial Content');
+  header('Content-Type: ' . $video_mime_map[$ext]);
+  header('Content-Range: bytes ' . $start . '-' . $end . '/' . $fsize);
+  header('Content-Length: ' . $length);
+
+  if ($_SERVER['REQUEST_METHOD'] === 'HEAD')
+  {
+    exit;
+  }
+
+  $fp = fopen($file, 'rb');
+  fseek($fp, $start);
+  $remaining = $length;
+  $chunk = 8192;
+  while ($remaining > 0 && !feof($fp))
+  {
+    $read = ($remaining > $chunk) ? $chunk : $remaining;
+    echo fread($fp, $read);
+    $remaining -= $read;
+    flush();
+  }
+  fclose($fp);
+  exit;
 }
 
 ?>
