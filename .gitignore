@@ -1,0 +1,14 @@
+# Config et données sensibles
+config.php
+*.sql
+*.pem
+*.key
+.env
+
+# Outils et éditeurs
+.claude/
+.vscode/
+
+# Système
+Thumbs.db
+.DS_Store
