@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.2
+Version: 1.3
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,6 +9,10 @@ Has Settings: webmaster
 
 // ================================================
 /*
+version 1.3 - 08/07/2026
+    corrigé 403 sur PDF/documents (hook render_element_content)
+    retiré le hook get_element_url redondant
+
 version 1.2 - 07/07/2026
     corrigé pb avec le slider dans VideoJS
 
@@ -200,6 +204,73 @@ function pdp_get_original_url($url, $src_image)
   return get_root_url()
     . 'plugins/private_derivative_protection/serve_original.php'
     . '?id=' . $src_image->id;
+}
+
+// ── Affichage des documents (PDF) dans picture.php ────────────────────────
+//
+// default_picture_content() (picture.php:132, handler par défaut de render_element_content)
+// lit la clé brute $element_info['element_url'] et la met dans U_ORIGINAL, SANS passer par
+// get_element_url() : ni notre hook get_element_url ni le handler core ne voient cette URL,
+// qui part brute sous galleries/ / upload/ → bloquée par notre .htaccess → 403.
+//
+// On se branche donc sur render_element_content lui-même, en priorité NEUTRAL - 10 pour
+// passer AVANT default_picture_content. Pour les documents (PDF), on renvoie un <object>
+// pointant sur serve_original.php (qui vérifie les droits et sert le fichier via PHP, hors
+// du champ du .htaccess). Pour tout le reste (images, vidéos), on rend $content inchangé :
+// default_picture_content et le plugin VideoJS gardent leur comportement normal.
+
+add_event_handler('render_element_content', 'pdp_render_document_content', EVENT_HANDLER_PRIORITY_NEUTRAL - 10, null, 2);
+
+function pdp_render_document_content($content, $element_info)
+{
+  // Un autre handler a déjà produit le contenu (ex : VideoJS) → ne pas interférer.
+  if (!empty($content))
+  {
+    return $content;
+  }
+
+  // Garde-fous : on a besoin de l'id et du nom de fichier.
+  $file = '';
+  if (!empty($element_info['file']))
+  {
+    $file = $element_info['file'];
+  }
+  elseif (!empty($element_info['path']))
+  {
+    $file = $element_info['path'];
+  }
+
+  if (empty($element_info['id']) || $file === '')
+  {
+    // DEBUG (à recommenter après validation)
+    //error_log('PDP_DOC skip : id ou file manquant');
+    return $content;
+  }
+
+  $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+  // On ne prend en charge que les documents non-images / non-vidéos.
+  // (Élargir cette liste si d'autres types de documents doivent être protégés.)
+  $document_ext = array('pdf');
+  if (!in_array($ext, $document_ext))
+  {
+    return $content;
+  }
+
+  $id  = (int) $element_info['id'];
+  $url = get_root_url() . 'plugins/private_derivative_protection/serve_original.php?id=' . $id;
+
+  // DEBUG (à recommenter après validation)
+  //error_log('PDP_DOC render id=' . $id . ' ext=' . $ext . ' -> ' . $url);
+
+  return
+    '<div class="pdp-document-viewer" style="text-align:center;">'
+    . '<object data="' . $url . '" type="application/pdf" '
+    . 'width="100%" style="height:80vh; min-height:600px; border:0;">'
+    . '<p>Impossible d\'afficher le document dans le navigateur. '
+    . '<a href="' . $url . '">Ouvrir / télécharger le PDF</a></p>'
+    . '</object>'
+    . '</div>';
 }
 
 // ── Support des requêtes Range pour action.php (lecture vidéo) ────────────
