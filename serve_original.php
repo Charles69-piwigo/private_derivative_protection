@@ -142,6 +142,7 @@ $mime_map = array(
   'mov'  => 'video/quicktime',
   'avi'  => 'video/x-msvideo',
   'mkv'  => 'video/x-matroska',
+  'pdf'  => 'application/pdf',
 );
 $mime  = isset($mime_map[$ext]) ? $mime_map[$ext] : 'application/octet-stream';
 $mtime = filemtime($file_path);
@@ -157,6 +158,10 @@ if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])
 error_log('PDP_ORIG OK ' . basename($file_path) . ' (' . $fsize . ' o)');
 
 header('Content-Type: ' . $mime);
+if ($ext === 'pdf')
+{
+  header('Content-Disposition: inline; filename="' . basename($file_path) . '"');
+}
 header('Accept-Ranges: bytes');
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
 header('Cache-Control: private, max-age=3600');
