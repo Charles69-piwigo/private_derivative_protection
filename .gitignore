@@ -1,14 +1,23 @@
-# Config et données sensibles
-config.php
-*.sql
-*.pem
-*.key
-.env
-
-# Outils et éditeurs
+# Agent / IDE
 .claude/
 .vscode/
 
-# Système
-Thumbs.db
+# Logs
+*.log
+logs/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Doc interne (local uniquement)
+STRUCTURE.md
+
+# Dumps SQL
+*.sql
+
+# Archives de release (générées via git archive, jamais commitées)
+*.zip
+
+# Script de génération des ZIP de release
+generate-release-zip.ps1

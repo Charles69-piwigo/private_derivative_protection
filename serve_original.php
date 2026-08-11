@@ -14,11 +14,7 @@
 chdir(realpath(__DIR__ . '/../..'));
 define('PHPWG_ROOT_PATH', './');
 
-error_log('PDP_ORIG --- ' . date('Y-m-d H:i:s') . ' id=' . ($_GET['id'] ?? '?'));
-
 include(PHPWG_ROOT_PATH . 'include/common.inc.php');
-
-error_log('PDP_ORIG user=' . ($user['username'] ?? 'n/a') . ' status=' . ($user['status'] ?? 'n/a'));
 
 // ── Validation ────────────────────────────────────────────────────────────
 
@@ -26,7 +22,6 @@ $image_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 if ($image_id <= 0)
 {
-  error_log('PDP_ORIG DENY 400 id invalide');
   header('HTTP/1.1 400 Bad Request');
   exit('Bad request');
 }
@@ -37,11 +32,9 @@ global $prefixeTable;
 
 $query = 'SELECT id, path, level FROM ' . $prefixeTable . 'images WHERE id = ' . $image_id . ' LIMIT 1;';
 $row   = pwg_db_fetch_assoc(pwg_query($query));
-error_log('PDP_ORIG image : ' . json_encode($row));
 
 if (!$row)
 {
-  error_log('PDP_ORIG DENY 404 image introuvable');
   header('HTTP/1.1 404 Not Found');
   exit('Not found');
 }
@@ -55,17 +48,14 @@ $rel_path = (substr($row['path'], 0, 2) === './') ? substr($row['path'], 2) : $r
 // via un $image_id intval() — jamais d'une entrée utilisateur directe.
 if (!preg_match('#^(galleries|upload)/#', $rel_path) || strpos($rel_path, '..') !== false)
 {
-  error_log('PDP_ORIG DENY 403 chemin DB invalide : ' . $rel_path);
   header('HTTP/1.1 403 Forbidden');
   exit('Forbidden');
 }
 
 $file_path = PHPWG_ROOT_PATH . $rel_path;
-error_log('PDP_ORIG file_path : ' . $file_path);
 
 if (!is_file($file_path))
 {
-  error_log('PDP_ORIG DENY 404 fichier absent');
   header('HTTP/1.1 404 Not Found');
   exit('Not found');
 }
@@ -73,11 +63,9 @@ if (!is_file($file_path))
 // ── Vérification des droits ───────────────────────────────────────────────
 
 $image_level = (int) $row['level'];
-error_log('PDP_ORIG level image=' . $image_level . ' user=' . (int) $user['level']);
 
 if ($image_level > (int) $user['level'])
 {
-  error_log('PDP_ORIG DENY 403 niveau insuffisant');
   header('HTTP/1.1 403 Forbidden');
   exit('Forbidden');
 }
@@ -90,11 +78,9 @@ while ($cat_row = pwg_db_fetch_assoc($result))
 {
   $image_categories[] = intval($cat_row['category_id']);
 }
-error_log('PDP_ORIG categories : ' . json_encode($image_categories));
 
 if (empty($image_categories))
 {
-  error_log('PDP_ORIG DENY 403 aucune catégorie');
   header('HTTP/1.1 403 Forbidden');
   exit('Forbidden');
 }
@@ -104,7 +90,6 @@ if (!empty($user['forbidden_categories']))
 {
   $forbidden = array_map('intval', explode(',', $user['forbidden_categories']));
 }
-error_log('PDP_ORIG forbidden : ' . json_encode($forbidden));
 
 $accessible = false;
 foreach ($image_categories as $cat_id)
@@ -115,11 +100,9 @@ foreach ($image_categories as $cat_id)
     break;
   }
 }
-error_log('PDP_ORIG accessible : ' . ($accessible ? 'OUI' : 'NON'));
 
 if (!$accessible)
 {
-  error_log('PDP_ORIG DENY 403 accès refusé');
   header('HTTP/1.1 403 Forbidden');
   exit('Forbidden');
 }
@@ -154,8 +137,6 @@ if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])
   header('HTTP/1.1 304 Not Modified');
   exit;
 }
-
-error_log('PDP_ORIG OK ' . basename($file_path) . ' (' . $fsize . ' o)');
 
 header('Content-Type: ' . $mime);
 if ($ext === 'pdf')

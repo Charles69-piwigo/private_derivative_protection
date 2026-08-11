@@ -51,6 +51,38 @@
     </tr>
   </table>
 
+  <!-- ── Protection des dérivées ───────────────────────────────────────────── -->
+  <h3>{'Protection des dérivées'|@translate}</h3>
+
+  <table>
+    <tr>
+      <td>
+        {if $DERIVATIVE_URL_STYLE_OK}
+          <span class="pdp-ok">&#10003;</span>
+        {else}
+          <span class="pdp-warn">&#10007;</span>
+        {/if}
+      </td>
+      <td>derivative_url_style</td>
+      <td style="padding-left:12px;color:#666;font-size:0.9em;">
+        {if $DERIVATIVE_URL_STYLE_OK}{'Actif'|@translate}{else}{'Absent ou incorrect'|@translate}{/if}
+      </td>
+    </tr>
+    <tr>
+      <td>
+        {if $HTACCESS_DATA_I_OK}
+          <span class="pdp-ok">&#10003;</span>
+        {else}
+          <span class="pdp-warn">&#10007;</span>
+        {/if}
+      </td>
+      <td>_data/i/.htaccess</td>
+      <td style="padding-left:12px;color:#666;font-size:0.9em;">
+        {if $HTACCESS_DATA_I_OK}{'Actif'|@translate}{else}{'Absent ou incorrect'|@translate}{/if}
+      </td>
+    </tr>
+  </table>
+
   <!-- ── Albums ────────────────────────────────────────────────────────────── -->
   <h3>{'Albums privés protégés'|@translate}</h3>
 

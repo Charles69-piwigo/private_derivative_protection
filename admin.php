@@ -8,9 +8,11 @@ $server_is_nginx = stripos($_SERVER['SERVER_SOFTWARE'] ?? '', 'nginx') !== false
 // ── Vérification des .htaccess ────────────────────────────────────────────────
 $htaccess_galleries_ok = false;
 $htaccess_upload_ok    = false;
+$htaccess_data_i_ok    = false;
 
 $galleries_htaccess = PHPWG_ROOT_PATH . 'galleries/.htaccess';
 $upload_htaccess    = PHPWG_ROOT_PATH . 'upload/.htaccess';
+$data_i_htaccess    = PHPWG_ROOT_PATH . '_data/i/.htaccess';
 
 if (file_exists($galleries_htaccess)) {
     $content = file_get_contents($galleries_htaccess);
@@ -20,6 +22,14 @@ if (file_exists($upload_htaccess)) {
     $content = file_get_contents($upload_htaccess);
     $htaccess_upload_ok = (strpos($content, 'Require all denied') !== false);
 }
+if (file_exists($data_i_htaccess)) {
+    $content = file_get_contents($data_i_htaccess);
+    $htaccess_data_i_ok = (strpos($content, 'Require all denied') !== false);
+}
+
+// ── Vérification derivative_url_style ─────────────────────────────────────────
+global $conf;
+$derivative_url_style_ok = (isset($conf['derivative_url_style']) && $conf['derivative_url_style'] == 2);
 
 // ── Nombre d'albums privés ────────────────────────────────────────────────────
 $result = pwg_query('SELECT COUNT(*) AS nb FROM ' . CATEGORIES_TABLE . ' WHERE status = \'private\'');
@@ -35,6 +45,8 @@ $template->assign([
     'SERVER_IS_NGINX'       => $server_is_nginx,
     'HTACCESS_GALLERIES_OK' => $htaccess_galleries_ok,
     'HTACCESS_UPLOAD_OK'    => $htaccess_upload_ok,
+    'HTACCESS_DATA_I_OK'    => $htaccess_data_i_ok,
+    'DERIVATIVE_URL_STYLE_OK' => $derivative_url_style_ok,
     'PRIVATE_ALBUMS_COUNT'  => $private_albums_count,
     'TAB'                   => $tab,
     'BASE_URL'              => $base_url,

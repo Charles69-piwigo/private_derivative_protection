@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.3
+Version: 1.4
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,6 +9,11 @@ Has Settings: webmaster
 
 // ================================================
 /*
+version 1.4 - 11/08/2026
+    activation derivative_url_style=2
+    fichier d'aide renseigné
+    langues FR UK
+
 version 1.3 - 08/07/2026
     corrigé 403 sur PDF/documents (hook render_element_content)
     retiré le hook get_element_url redondant

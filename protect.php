@@ -10,7 +10,7 @@ ini_set('error_log', $_pdp_log);
 unset($_pdp_log);
 */
 
-define('PDP_TOKEN_TTL', 6*3600); // doit rester cohérent avec la valeur dans main.inc.php
+define('PDP_TOKEN_TTL', 3*3600); // doit rester cohérent avec la valeur dans main.inc.php
 
 chdir(realpath(__DIR__ . '/../..'));
 define('PHPWG_ROOT_PATH', './');
@@ -32,7 +32,6 @@ pwg_db_close();
 
 function pdp_deny($code, $msg = '')
 {
-  error_log('PDP DENY '.$code.' '.$msg);
   http_response_code($code);
   if ($msg) echo $msg;
   exit;
@@ -80,7 +79,5 @@ if (isset($_GET['ajaxload']) && $_GET['ajaxload'] == 'true')
     return $buffer;
   });
 }
-
-error_log('PDP DELEGATING TO i.php : '.$_SERVER['QUERY_STRING']);
 
 include(PHPWG_ROOT_PATH.'i.php');
