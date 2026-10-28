@@ -131,6 +131,17 @@ $mime  = isset($mime_map[$ext]) ? $mime_map[$ext] : 'application/octet-stream';
 $mtime = filemtime($file_path);
 $fsize = filesize($file_path);
 
+// ── CORS : le récepteur Chromecast (castor) télécharge les vidéos avec une requête CORS ──
+// '*' sans credentials : les cookies de session ne sont jamais envoyés, les droits restent vérifiés plus haut.
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: Range');
+header('Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges');
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS')
+{
+  header('HTTP/1.1 204 No Content');
+  exit;
+}
+
 if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])
     && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) == $mtime)
 {

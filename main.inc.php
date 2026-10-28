@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.4
+Version: 1.5
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,6 +9,9 @@ Has Settings: webmaster
 
 // ================================================
 /*
+version 1.5 - 28/10/2026
+    serve_original.php : en-têtes CORS (Access-Control-Allow-Origin) pour la lecture des vidéos par Chromecast (plugin castor)
+
 version 1.4 - 11/08/2026
     activation derivative_url_style=2
     fichier d'aide renseigné
