@@ -18,7 +18,9 @@ include(PHPWG_ROOT_PATH . 'include/common.inc.php');
 
 // ── Validation ────────────────────────────────────────────────────────────
 
-$image_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+// ?rep=<id> : sert le fichier représentatif (poster d'une vidéo) au lieu de l'original.
+$want_rep = isset($_GET['rep']);
+$image_id = $want_rep ? intval($_GET['rep']) : (isset($_GET['id']) ? intval($_GET['id']) : 0);
 
 if ($image_id <= 0)
 {
@@ -30,7 +32,7 @@ if ($image_id <= 0)
 
 global $prefixeTable;
 
-$query = 'SELECT id, path, level FROM ' . $prefixeTable . 'images WHERE id = ' . $image_id . ' LIMIT 1;';
+$query = 'SELECT id, path, level, representative_ext FROM ' . $prefixeTable . 'images WHERE id = ' . $image_id . ' LIMIT 1;';
 $row   = pwg_db_fetch_assoc(pwg_query($query));
 
 if (!$row)
@@ -50,6 +52,17 @@ if (!preg_match('#^(galleries|upload)/#', $rel_path) || strpos($rel_path, '..') 
 {
   header('HTTP/1.1 403 Forbidden');
   exit('Forbidden');
+}
+
+if ($want_rep)
+{
+  if (empty($row['representative_ext']) || !preg_match('/^[a-z0-9]+$/i', $row['representative_ext']))
+  {
+    header('HTTP/1.1 404 Not Found');
+    exit('Not found');
+  }
+  $pi = pathinfo($rel_path);
+  $rel_path = $pi['dirname'] . '/pwg_representative/' . $pi['filename'] . '.' . $row['representative_ext'];
 }
 
 $file_path = PHPWG_ROOT_PATH . $rel_path;

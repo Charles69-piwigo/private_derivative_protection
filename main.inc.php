@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Private Derivative Protection
-Version: 1.5
+Version: auto
 Description: Protège par jeton signé les vignettes des photos appartenant uniquement à des albums privés
 Author: Charles69
 Has Settings: webmaster
@@ -9,7 +9,12 @@ Has Settings: webmaster
 
 // ================================================
 /*
-version 1.5 - 28/10/2026
+version 1.6 - 29/10/2026
+    corrigé 403 sur le poster des vidéos (piwigo-videojs) : servi par serve_original.php?rep=<id>
+    en-tête Version: auto (lecture de la version via le tag git par PEM)
+    ajout README.md (fr/en) et CLAUDE.md
+
+version 1.5 -28/10/2026
     serve_original.php : en-têtes CORS (Access-Control-Allow-Origin) pour la lecture des vidéos par Chromecast (plugin castor)
 
 version 1.4 - 11/08/2026
@@ -279,6 +284,29 @@ function pdp_render_document_content($content, $element_info)
     . '<a href="' . $url . '">Ouvrir / télécharger le PDF</a></p>'
     . '</object>'
     . '</div>';
+}
+
+// ── Poster des vidéos (piwigo-videojs) ────────────────────────────────────
+//
+// VideoJS met en poster le chemin brut galleries/.../pwg_representative/xxx.jpg,
+// bloqué par notre .htaccess (403 dans la console). Après son rendu (priorité
+// > NEUTRAL), on remplace cette URL par serve_original.php?rep=<id>.
+
+add_event_handler('render_element_content', 'pdp_rewrite_video_poster', EVENT_HANDLER_PRIORITY_NEUTRAL + 10, null, 2);
+
+function pdp_rewrite_video_poster($content, $element_info)
+{
+  if (empty($content) || empty($element_info['id']) || empty($element_info['path']))
+  {
+    return $content;
+  }
+
+  $name = pathinfo($element_info['path'], PATHINFO_FILENAME);
+  // Les chemins peuvent contenir des espaces non encodés : on remonte jusqu'au guillemet ouvrant.
+  $pattern = '#[^"\']*/pwg_representative/' . preg_quote($name, '#') . '\.(?:jpe?g|png|gif|webp)#i';
+  $url = get_root_url() . 'plugins/private_derivative_protection/serve_original.php?rep=' . (int) $element_info['id'];
+
+  return preg_replace($pattern, $url, $content);
 }
 
 // ── Support des requêtes Range pour action.php (lecture vidéo) ────────────
